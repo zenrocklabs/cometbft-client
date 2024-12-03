@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	cmtsync "github.com/strangelove-ventures/cometbft-client/libs/sync"
@@ -207,6 +208,23 @@ func (c *Client) Call(
 	}
 
 	httpRequest.Header.Set("Content-Type", "application/json")
+
+	if envHeaders, ok := os.LookupEnv("GORELAYER_HEADERS"); ok {
+		headers := make(map[string]map[string]string)
+		err := json.Unmarshal([]byte(envHeaders), &headers)
+		if err != nil {
+			fmt.Println("failed to unmarshal go relayer headers")
+		} else {
+			for host, h := range headers {
+				if strings.Contains(httpRequest.URL.String(), host) {
+					for header, value := range h {
+						httpRequest.Header.Add(header, value)
+					}
+				}
+			}
+		}
+
+	}
 
 	if c.username != "" || c.password != "" {
 		httpRequest.SetBasicAuth(c.username, c.password)
